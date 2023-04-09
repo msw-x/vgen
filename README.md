@@ -2,7 +2,7 @@
 The git repository is used for generation
 
 installation:
-`go install github.com/msw-x/vgen@latest`
+`go install github.com/msw-x/vgen/cmd/vgen@latest`
 
 usage:
 `vgen go [destination directory]`
