@@ -2,9 +2,7 @@ package vgen
 
 import (
 	"errors"
-	"os/exec"
 	"strings"
-	"time"
 
 	"msw/moon"
 )

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/msw-x/vgen"
+import "os"
 
 func main() {
 	args := os.Args()

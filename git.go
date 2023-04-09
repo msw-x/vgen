@@ -1,5 +1,11 @@
 package vgen
 
+import (
+	"os/exec"
+	"strings"
+	"time"
+)
+
 type gitCmd struct {
 	path string
 }

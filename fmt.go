@@ -1,5 +1,10 @@
 package vgen
 
+import (
+	"strings"
+	"time"
+)
+
 func fmtTime(tm time.Time) string {
 	return tm.Format("06.01.02.150405")
 }
