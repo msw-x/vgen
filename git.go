@@ -1,9 +1,14 @@
 package vgen
 
 import (
+	"errors"
+	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/msw-x/moon/ustring"
 )
 
 type gitCmd struct {
@@ -17,56 +22,79 @@ type repoStatus struct {
 	late   bool
 }
 
-func (this *gitCmd) exec(arg ...string) string {
+func (o *gitCmd) exec(arg ...string) (string, error) {
 	cmd := exec.Command("git", arg...)
-	cmd.Dir = this.path
+	cmd.Dir = o.path
 	out, err := cmd.CombinedOutput()
 	s := string(out)
-	moon.TrimSuffix(&s, "\n")
-	moon.Check(err, s)
-	return s
+	s = strings.TrimSuffix(s, "\n")
+	return s, err
 }
 
-func (this *gitCmd) status() (branch string, pure bool) {
-	s := this.exec("status", "-s", "-b")
+func (o *gitCmd) status() (branch string, pure bool, err error) {
+	var s string
+	s, err = o.exec("status", "-s", "-b")
+	if err != nil {
+		return
+	}
 	lines := strings.Split(s, "\n")
 	if len(lines) == 0 {
-		moon.Panic("git status fail: lines is empty")
+		err = errors.New("git status fail: lines is empty")
+		return
 	}
 	branch = lines[0]
-	if !moon.TrimPrefix(&branch, "## ") {
-		moon.Panicf("git status fail: branch not found: %s", branch)
+	prefix := "## "
+	if strings.HasPrefix(branch, prefix) {
+		branch = strings.TrimPrefix(branch, prefix)
+	} else {
+		err = fmt.Errorf("git status fail: branch not found: %s", branch)
+		return
 	}
-	branch, _ = moon.SplitPair(branch, "...")
+	branch, _ = ustring.SplitPair(branch, "...")
 	lines = lines[1:]
 	pure = len(lines) == 0
 	return
 }
 
-func (this *gitCmd) lastHash(all bool) string {
+func (o *gitCmd) lastHash(all bool) (string, error) {
 	cmd := []string{"log", "-1", `--pretty=format:"%h"`}
 	if all {
 		cmd = append(cmd, "--all")
 	}
-	return this.exec(cmd...)
+	return o.exec(cmd...)
 }
 
-func (this *gitCmd) lastTime() time.Time {
+func (o *gitCmd) lastTime() (t time.Time, err error) {
 	cmd := []string{"log", "-1", `--pretty=format:"%ct"`}
-	i := moon.ToInt(moon.TrimQuotesThru(this.exec(cmd...)))
-	return time.Unix(int64(i), 0)
-}
-
-func (this *gitCmd) lastComit() bool {
-	return this.lastHash(false) == this.lastHash(true)
-}
-
-func (this *gitCmd) repoStatus() repoStatus {
-	branch, pure := this.status()
-	return repoStatus{
-		branch: branch,
-		time:   this.lastTime(),
-		pure:   pure,
-		late:   this.lastComit(),
+	var s string
+	s, err = o.exec(cmd...)
+	if err == nil {
+		var i int
+		i, err = strconv.Atoi(ustring.TrimQuotes(s))
+		t = time.Unix(int64(i), 0)
 	}
+	return
+}
+
+func (o *gitCmd) lastComit() (yes bool, err error) {
+	var h1, h2 string
+	h1, err = o.lastHash(false)
+	if err == nil {
+		h2, err = o.lastHash(true)
+		if err == nil {
+			yes = h1 == h2
+		}
+	}
+	return
+}
+
+func (o *gitCmd) repoStatus() (s repoStatus, err error) {
+	s.branch, s.pure, err = o.status()
+	if err == nil {
+		s.time, err = o.lastTime()
+		if err == nil {
+			s.late, err = o.lastComit()
+		}
+	}
+	return
 }

@@ -1,40 +1,38 @@
 package vgen
 
 import (
-	"errors"
+	"fmt"
+	"path"
 	"strings"
 
-	"msw/moon"
+	"github.com/msw-x/moon/fs"
 )
 
-func HasRepository(path string) bool {
-	return moon.PathExist(moon.PathJoin(path, ".git"))
+func HasRepository(dir string) bool {
+	return fs.Exist(path.Join(dir, ".git"))
 }
 
-func Gen(path string) string {
+func Gen(path string) (s string, err error) {
 	if !HasRepository(path) {
-		moon.Panicf("not found git repository: %s", path)
+		err = fmt.Errorf("not found git repository: %s", path)
+		return
 	}
 	cmd := gitCmd{path: path}
-	status := cmd.repoStatus()
-	components := []string{formatTime(status.time)}
-	if status.branch != "master" && status.branch != "main" {
-		if status.branch == "HEAD (no branch)" {
-			//
-		} else {
-			components = append(components, status.branch)
+	var status repoStatus
+	status, err = cmd.repoStatus()
+	if err == nil {
+		components := []string{fmtTime(status.time)}
+		if status.branch != "master" && status.branch != "main" {
+			if status.branch == "HEAD (no branch)" {
+				//
+			} else {
+				components = append(components, status.branch)
+			}
 		}
+		if !status.pure {
+			components = append(components, fmtRelativeTime(status.time))
+		}
+		s = strings.Join(components, "-")
 	}
-	if !status.pure {
-		components = append(components, formatRelativeTime(status.time))
-	}
-	return strings.Join(components, "-")
-}
-
-func GenQuiet(path string) (v string, err error) {
-	defer moon.Recover(func(e string) {
-		err = errors.New(e)
-	})
-	v = Gen(path)
 	return
 }

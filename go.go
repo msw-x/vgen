@@ -2,13 +2,20 @@ package vgen
 
 import (
 	"fmt"
-	"msw/moon"
+	"path"
+
+	"github.com/msw-x/moon/fs"
 )
 
 type Go struct {
 	Package  string
 	Name     string
 	Filename string
+}
+
+func NewGo() *Go {
+	o := new(Go)
+	return o.WithDefault()
 }
 
 func (o *Go) WithDefault() *Go {
@@ -37,6 +44,6 @@ func (o *Go) Gen(version string) string {
 	return fmt.Sprintf("package %s\n\nconst %s = \"%s\"\n", o.Package, o.Name, version)
 }
 
-func (o *Go) GenFile(version string, directory string) {
-	moon.WriteFileStr(moon.PathJoin(directory, o.Filename), o.Gen(version))
+func (o *Go) GenFile(version string, directory string) error {
+	return fs.WriteString(path.Join(directory, o.Filename), o.Gen(version))
 }
